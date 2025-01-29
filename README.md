@@ -1,0 +1,2 @@
+# amdecrypt
+Apple Music Decrypt
