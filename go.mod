@@ -1,4 +1,4 @@
-module main
+module amdecrypt
 
 go 1.17
 
