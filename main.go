@@ -587,8 +587,8 @@ func writeM4a(w *mp4.Writer, info *SongInfo, data []byte) error {
 	return nil
 }
 
-func decryptSong(agentSocketIp string, filename string, id string, info *SongInfo, keys []string) error {
-	conn, err := net.Dial("tcp", agentSocketIp)
+func decryptSong(agentIp string, filename string, id string, info *SongInfo, keys []string) error {
+	conn, err := net.Dial("tcp", agentIp)
 	if err != nil {
 		return err
 	}
@@ -776,9 +776,9 @@ func extractSong(inputPath string) (*SongInfo, error) {
 
 func main() {
 	if len(os.Args) != 6 {
-		panic(fmt.Errorf("usage: %s <agentSocketIp> <id> <key> <inputPath> <outputPath>", os.Args[0]))
+		panic(fmt.Errorf("usage: %s <agentIp> <id> <key> <inputPath> <outputPath>", os.Args[0]))
 	}
-	agentSocketIp := os.Args[1]
+	agentIp := os.Args[1]
 	id := os.Args[2]
 	key := os.Args[3]
 	inputPath := os.Args[4]
@@ -788,7 +788,7 @@ func main() {
 		panic(err)
 	}
 	keys := []string{prefetchKey, key}
-	err = decryptSong(agentSocketIp, outputPath, id, info, keys)
+	err = decryptSong(agentIp, outputPath, id, info, keys)
 	if err != nil {
 		panic(err)
 	}
