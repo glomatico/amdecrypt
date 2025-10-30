@@ -654,8 +654,8 @@ func decryptSong(agentSocketIp string, filename string, id string, info *SongInf
 	return writeM4a(mp4.NewWriter(create), info, decrypted)
 }
 
-func extractSong(encryptedPath string) (*SongInfo, error) {
-	rawSong, err := os.ReadFile(encryptedPath)
+func extractSong(inputPath string) (*SongInfo, error) {
+	rawSong, err := os.ReadFile(inputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -776,19 +776,19 @@ func extractSong(encryptedPath string) (*SongInfo, error) {
 
 func main() {
 	if len(os.Args) != 6 {
-		panic(fmt.Errorf("usage: %s <agentSocketIp> <encryptedPath> <decryptedPath> <id> <key>", os.Args[0]))
+		panic(fmt.Errorf("usage: %s <agentSocketIp> <id> <key> <inputPath> <outputPath>", os.Args[0]))
 	}
 	agentSocketIp := os.Args[1]
-	encryptedPath := os.Args[2]
-	decryptedPath := os.Args[3]
-	id := os.Args[4]
-	key := os.Args[5]
-	info, err := extractSong(encryptedPath)
+	id := os.Args[2]
+	key := os.Args[3]
+	inputPath := os.Args[4]
+	outputPath := os.Args[5]
+	info, err := extractSong(inputPath)
 	if err != nil {
 		panic(err)
 	}
 	keys := []string{prefetchKey, key}
-	err = decryptSong(agentSocketIp, decryptedPath, id, info, keys)
+	err = decryptSong(agentSocketIp, outputPath, id, info, keys)
 	if err != nil {
 		panic(err)
 	}
