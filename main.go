@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 
 	"github.com/abema/go-mp4"
 )
@@ -572,7 +573,34 @@ func decryptSong(agentIp string, filename string, id string, info *SongInfo, key
 	}
 	defer create.Close()
 
-	return writeM4a(mp4.NewWriter(create), info, decrypted)
+	err = writeM4a(mp4.NewWriter(create), info, decrypted)
+	create.Close()
+	if err != nil {
+		return err
+	}
+
+	// Use FFmpeg to fixup the MP4 - removes encryption metadata
+	tempFile := filename + ".tmp.m4a"
+	err = os.Rename(filename, tempFile)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tempFile)
+
+	cmd := exec.Command("ffmpeg",
+		"-i", tempFile,
+		"-c", "copy", // copy codec without re-encoding
+		"-movflags", "+faststart",
+		"-y", // overwrite
+		filename,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("ffmpeg fixup failed: %w, output: %s", err, string(output))
+	}
+
+	return nil
 }
 
 func extractSong(inputPath string) (*SongInfo, error) {
