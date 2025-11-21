@@ -502,7 +502,7 @@ func writeM4a(w *mp4.Writer, info *SongInfo, data []byte) error {
 	return nil
 }
 
-func decryptSong(agentIp string, filename string, id string, info *SongInfo, keys []string) error {
+func decryptSong(agentIp string, mp4decryptPath string, filename string, id string, info *SongInfo, keys []string) error {
 	conn, err := net.Dial("tcp", agentIp)
 	if err != nil {
 		return err
@@ -588,7 +588,7 @@ func decryptSong(agentIp string, filename string, id string, info *SongInfo, key
 	defer os.Remove(tempFile)
 
 	cmd := exec.Command(
-		"mp4decrypt",
+		mp4decryptPath,
 		"--key", "00000000000000000000000000000000:00000000000000000000000000000000",
 		tempFile,
 		filename,
@@ -717,16 +717,17 @@ func extractSong(inputPath string) (*SongInfo, error) {
 }
 
 func main() {
-	if len(os.Args) != 6 {
-		fmt.Fprintf(os.Stderr, "usage: %s <agentIp> <id> <key> <inputPath> <outputPath>\n", os.Args[0])
+	if len(os.Args) != 7 {
+		fmt.Fprintf(os.Stderr, "usage: %s <agentIp> <mp4decryptPath> <id> <key> <inputPath> <outputPath>\n", os.Args[0])
 		os.Exit(1)
 	}
 
 	agentIp := os.Args[1]
-	id := os.Args[2]
-	key := os.Args[3]
-	inputPath := os.Args[4]
-	outputPath := os.Args[5]
+	mp4decryptPath := os.Args[2]
+	id := os.Args[3]
+	key := os.Args[4]
+	inputPath := os.Args[5]
+	outputPath := os.Args[6]
 
 	info, err := extractSong(inputPath)
 	if err != nil {
@@ -734,7 +735,7 @@ func main() {
 	}
 
 	keys := []string{prefetchKey, key}
-	err = decryptSong(agentIp, outputPath, id, info, keys)
+	err = decryptSong(agentIp, mp4decryptPath, outputPath, id, info, keys)
 	if err != nil {
 		panic(err)
 	}
