@@ -579,7 +579,7 @@ func decryptSong(agentIp string, filename string, id string, info *SongInfo, key
 		return err
 	}
 
-	// Use FFmpeg to fixup the MP4 - removes encryption metadata
+	// Use mp4decrypt to fixup the MP4 - removes encryption metadata
 	tempFile := filename + ".tmp.m4a"
 	err = os.Rename(filename, tempFile)
 	if err != nil {
@@ -587,17 +587,16 @@ func decryptSong(agentIp string, filename string, id string, info *SongInfo, key
 	}
 	defer os.Remove(tempFile)
 
-	cmd := exec.Command("ffmpeg",
-		"-i", tempFile,
-		"-c", "copy", // copy codec without re-encoding
-		"-movflags", "+faststart",
-		"-y", // overwrite
+	cmd := exec.Command(
+		"mp4decrypt",
+		"--key", "00000000000000000000000000000000:00000000000000000000000000000000",
+		tempFile,
 		filename,
 	)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("ffmpeg fixup failed: %w, output: %s", err, string(output))
+		return fmt.Errorf("mp4decrypt fixup failed: %w, output: %s", err, string(output))
 	}
 
 	return nil
