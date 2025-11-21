@@ -3,20 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"os"
 
 	"github.com/abema/go-mp4"
 )
 
-const (
-	defaultId   = "0"
-	prefetchKey = "skd://itunes.apple.com/P000000000/s1/e1"
-)
+const prefetchKey = "skd://itunes.apple.com/P000000000/s1/e1"
 
 type SampleInfo struct {
 	data      []byte
@@ -24,38 +19,10 @@ type SampleInfo struct {
 	descIndex uint32
 }
 
-type Alac struct {
-	mp4.FullBox `mp4:"extend"`
-
-	FrameLength       uint32 `mp4:"size=32"`
-	CompatibleVersion uint8  `mp4:"size=8"`
-	BitDepth          uint8  `mp4:"size=8"`
-	Pb                uint8  `mp4:"size=8"`
-	Mb                uint8  `mp4:"size=8"`
-	Kb                uint8  `mp4:"size=8"`
-	NumChannels       uint8  `mp4:"size=8"`
-	MaxRun            uint16 `mp4:"size=16"`
-	MaxFrameBytes     uint32 `mp4:"size=32"`
-	AvgBitRate        uint32 `mp4:"size=32"`
-	SampleRate        uint32 `mp4:"size=32"`
-}
-
 type SongInfo struct {
-	r         io.ReadSeeker
-	alacParam *Alac
-	samples   []SampleInfo
-}
-
-func init() {
-	mp4.AddBoxDef((*Alac)(nil))
-}
-
-func (*Alac) GetType() mp4.BoxType {
-	return BoxTypeAlac()
-}
-
-func BoxTypeAlac() mp4.BoxType {
-	return mp4.StrToBoxType("alac")
+	r           io.ReadSeeker
+	samples     []SampleInfo
+	encaBoxInfo *mp4.BoxInfo
 }
 
 func (s *SongInfo) Duration() (ret uint64) {
@@ -272,63 +239,10 @@ func writeM4a(w *mp4.Writer, info *SongInfo, data []byte) error {
 								return err
 							}
 
-							{ // alac
-								_, err = w.StartBox(&mp4.BoxInfo{Type: BoxTypeAlac()})
-								if err != nil {
-									return err
-								}
-
-								_, err = w.Write([]byte{
-									0, 0, 0, 0, 0, 0, 0, 1,
-									0, 0, 0, 0, 0, 0, 0, 0})
-								if err != nil {
-									return err
-								}
-
-								err = binary.Write(w, binary.BigEndian, uint16(info.alacParam.NumChannels))
-								if err != nil {
-									return err
-								}
-
-								err = binary.Write(w, binary.BigEndian, uint16(info.alacParam.BitDepth))
-								if err != nil {
-									return err
-								}
-
-								_, err = w.Write([]byte{0, 0})
-								if err != nil {
-									return err
-								}
-
-								err = binary.Write(w, binary.BigEndian, info.alacParam.SampleRate)
-								if err != nil {
-									return err
-								}
-
-								_, err = w.Write([]byte{0, 0})
-								if err != nil {
-									return err
-								}
-
-								box, err := w.StartBox(&mp4.BoxInfo{Type: BoxTypeAlac()})
-								if err != nil {
-									return err
-								}
-
-								_, err = mp4.Marshal(w, info.alacParam, box.Context)
-								if err != nil {
-									return err
-								}
-
-								_, err = w.EndBox()
-								if err != nil {
-									return err
-								}
-
-								_, err = w.EndBox()
-								if err != nil {
-									return err
-								}
+							// For all codecs, copy the original enca box
+							err = w.CopyBox(info.r, info.encaBoxInfo)
+							if err != nil {
+								return err
 							}
 
 							_, err = w.EndBox()
@@ -593,8 +507,15 @@ func decryptSong(agentIp string, filename string, id string, info *SongInfo, key
 		return err
 	}
 	defer conn.Close()
-	var decrypted []byte
-	var lastIndex uint32 = math.MaxUint8
+
+	// Pre-allocate space for decrypted data
+	totalSize := uint64(0)
+	for _, sp := range info.samples {
+		totalSize += uint64(len(sp.data))
+	}
+	decrypted := make([]byte, 0, totalSize)
+
+	var lastIndex uint32 = 255 // MaxUint8
 	for _, sp := range info.samples {
 		if lastIndex != sp.descIndex {
 			if len(decrypted) != 0 {
@@ -690,15 +611,9 @@ func extractSong(inputPath string) (*SongInfo, error) {
 		return nil, err
 	}
 
-	aalac, err := mp4.ExtractBoxWithPayload(f, &enca[0].Info,
-		[]mp4.BoxType{BoxTypeAlac()})
-	if err != nil || len(aalac) != 1 {
-		return nil, err
-	}
-
 	extracted := &SongInfo{
-		r:         f,
-		alacParam: aalac[0].Payload.(*Alac),
+		r:           f,
+		encaBoxInfo: &enca[0].Info,
 	}
 
 	moofs, err := mp4.ExtractBox(f, nil, []mp4.BoxType{
@@ -767,7 +682,7 @@ func extractSong(inputPath string) (*SongInfo, error) {
 			}
 		}
 		if len(mdat) != 0 {
-			return nil, errors.New("offset mismatch")
+			return nil, fmt.Errorf("offset mismatch")
 		}
 	}
 
@@ -776,17 +691,21 @@ func extractSong(inputPath string) (*SongInfo, error) {
 
 func main() {
 	if len(os.Args) != 6 {
-		panic(fmt.Errorf("usage: %s <agentIp> <id> <key> <inputPath> <outputPath>", os.Args[0]))
+		fmt.Fprintf(os.Stderr, "usage: %s <agentIp> <id> <key> <inputPath> <outputPath>\n", os.Args[0])
+		os.Exit(1)
 	}
+
 	agentIp := os.Args[1]
 	id := os.Args[2]
 	key := os.Args[3]
 	inputPath := os.Args[4]
 	outputPath := os.Args[5]
+
 	info, err := extractSong(inputPath)
 	if err != nil {
 		panic(err)
 	}
+
 	keys := []string{prefetchKey, key}
 	err = decryptSong(agentIp, outputPath, id, info, keys)
 	if err != nil {
