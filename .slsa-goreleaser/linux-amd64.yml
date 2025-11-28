@@ -18,8 +18,8 @@ goos: linux
 goarch: amd64
 
 # Binary output name.
-binary: "{{ .Os }}-{{ .Arch }}/amdecrypt"
+binary: amdecrypt
 
 # (Optional) Archive name.
 archive:
-  name: "amdecrypt-{{ .Os }}-{{ .Arch }}"
+  name: amdecrypt-linux-amd64
