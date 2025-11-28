@@ -18,8 +18,8 @@ goos: darwin
 goarch: arm64
 
 # Binary output name.
-binary: {{ .Os }}-{{ .Arch }}/amdecrypt
+binary: "{{ .Os }}-{{ .Arch }}/amdecrypt"
 
 # (Optional) Archive name.
 archive:
-  name: amdecrypt-{{ .Os }}-{{ .Arch }}
+  name: "amdecrypt-{{ .Os }}-{{ .Arch }}"
