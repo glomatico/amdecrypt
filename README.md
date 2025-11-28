@@ -2,6 +2,8 @@
 
 A CLI tool for decrypting Apple Music songs in conjunction with a [wrapper server](https://github.com/WorldObservationLog/wrapper).
 
+Based on [apple-music-alac-downloader](https://github.com/alacleaker/apple-music-alac-downloader).
+
 ## 📋 Prerequisites
 
 Must be added to your system's PATH:
