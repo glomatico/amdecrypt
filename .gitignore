@@ -1,6 +1,5 @@
 /*
 !.github/
-!.slsa-goreleaser/
 !.gitignore
 !go.mod
 !go.sum
