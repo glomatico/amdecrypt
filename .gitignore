@@ -1,6 +1,6 @@
 /*
 !.gitignore
-!.goreleaser.yml
+!.slsa-goreleaser.yml
 !go.mod
 !go.sum
 !main.go
