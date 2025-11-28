@@ -2,11 +2,9 @@
 name: goreleaser
 
 on:
-  pull_request:
-  push:
-    # run only against tags
-    tags:
-      - "*"
+  workflow_dispatch:
+  release:
+    types: [created]
 
 permissions:
   contents: write
